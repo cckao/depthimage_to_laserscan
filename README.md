@@ -14,17 +14,21 @@ http://www.ros.org/wiki/depthimage_to_laserscan
 * `cd <CATKIN_WS> && catkin_make`
 
 ##Usage
-* Launch the node
+###Launch the node
 
 `source <CATKIN_WS>/devel/setup.bash
 
 rosrun depthimage_to_laserscan depthimage_to_laserscan`
 
-* Published topics:
-** /scan
-* Subscribed topics:
-** /camera/depth/compressed
-** /camera/camera_info
+###Output topics:
+* /scan
+
+###Input topics:
+* /camera/depth/compressed
+* /camera/camera_info
+* Topics above will be subscribed only if /scan is subscribed.
+
+###Configurations
 * Configurations are described in cfg/Depth.cfg
 
 ##Visualization
