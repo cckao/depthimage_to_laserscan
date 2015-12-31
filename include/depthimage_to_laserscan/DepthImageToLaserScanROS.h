@@ -96,6 +96,8 @@ namespace depthimage_to_laserscan
     ros::NodeHandle pnh_; ///< Private nodehandle used to generate the transport hints in the connectCb.
     image_transport::ImageTransport it_; ///< Subscribes to synchronized Image CameraInfo pairs.
     image_transport::CameraSubscriber sub_; ///< Subscriber for image_transport
+    std::string depth_im_topic_; ///< Depth image topic
+    std::string im_transport_; ///< Image transport
     ros::Publisher pub_; ///< Publisher for output LaserScan messages
     dynamic_reconfigure::Server<depthimage_to_laserscan::DepthConfig> srv_; ///< Dynamic reconfigure server
     

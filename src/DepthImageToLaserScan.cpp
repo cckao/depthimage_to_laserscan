@@ -33,8 +33,67 @@
 
 #include <depthimage_to_laserscan/DepthImageToLaserScan.h>
 
-using namespace depthimage_to_laserscan;
-  
+namespace depthimage_to_laserscan
+{
+/**
+ * Specialization for this bgr8 image. The original depth image saved
+ * depth in uint16 but encoded in rgb565, so conversion from bgr8 to
+ * rgb565 is needed.
+ */
+template<>
+void DepthImageToLaserScan::convert<uint8_t>(const sensor_msgs::ImageConstPtr& depth_msg,
+  const image_geometry::PinholeCameraModel& cam_model,
+  const sensor_msgs::LaserScanPtr& scan_msg, const int& scan_height) const
+{
+  // Use correct principal point from calibration
+  float center_x = cam_model.cx();
+  float center_y = cam_model.cy();
+
+  // Combine unit conversion (if necessary) with scaling by focal length for computing (X,Y)
+  double unit_scaling = depthimage_to_laserscan::DepthTraits<uint16_t>::toMeters(1);
+  float constant_x = unit_scaling / cam_model.fx();
+  float constant_y = unit_scaling / cam_model.fy();
+
+  const uint8_t* depth_row = reinterpret_cast<const uint8_t*>(&depth_msg->data[0]);
+  int row_step = depth_msg->step / sizeof(uint8_t);
+
+  int offset = (int)(cam_model.cy() - scan_height / 2);
+  depth_row += offset * row_step; // Offset to center of image
+
+  for(int v = offset; v < offset+scan_height_; ++v, depth_row += row_step)
+  {
+    for(int u = 0; u < (int)depth_msg->width; ++u) // Loop over each pixel in row
+    {
+      int byte_idx = 3 * u;
+      // bgr8 to rgb565 to uint16.
+      uint16_t blue = depth_row[byte_idx] >> 3;
+      uint16_t green = depth_row[byte_idx + 1] >> 2;
+      uint16_t red = depth_row[byte_idx + 2] >> 3;
+      uint16_t depth = (red << 11) | (green << 5) | blue;
+
+      double r = depth; // Assign to pass through NaNs and Infs
+      double th = -atan2((double)(u - center_x) * constant_x, unit_scaling); // Atan2(x, z), but depth divides out
+      int index = (th - scan_msg->angle_min) / scan_msg->angle_increment;
+
+      if(depthimage_to_laserscan::DepthTraits<uint16_t>::valid(depth)) // Not NaN or Inf
+      {
+        // Calculate in XYZ
+        double x = (u - center_x) * depth * constant_x;
+        double z = depthimage_to_laserscan::DepthTraits<uint16_t>::toMeters(depth);
+
+        // Calculate actual distance
+        r = sqrt(pow(x, 2.0) + pow(z, 2.0));
+      }
+
+      // Determine if this point should be used.
+      if(use_point(r, scan_msg->ranges[index], scan_msg->range_min, scan_msg->range_max))
+      {
+        scan_msg->ranges[index] = r;
+      }
+    }
+  }
+}
+
 DepthImageToLaserScan::DepthImageToLaserScan(){
 }
 
@@ -134,6 +193,10 @@ sensor_msgs::LaserScanPtr DepthImageToLaserScan::convert_msg(const sensor_msgs::
   {
     convert<float>(depth_msg, cam_model_, scan_msg, scan_height_);
   }
+  else if (depth_msg->encoding == sensor_msgs::image_encodings::BGR8)
+  {
+    convert<uint8_t>(depth_msg, cam_model_, scan_msg, scan_height_);
+  }
   else
   {
     std::stringstream ss;
@@ -160,3 +223,5 @@ void DepthImageToLaserScan::set_scan_height(const int scan_height){
 void DepthImageToLaserScan::set_output_frame(const std::string output_frame_id){
   output_frame_id_ = output_frame_id;
 }
+
+} // namespace depthimage_to_laserscan
