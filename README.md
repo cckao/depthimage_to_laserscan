@@ -24,7 +24,7 @@ http://www.ros.org/wiki/depthimage_to_laserscan
 * /scan
 
 ###Input topics
-Topics above will be subscribed only if /scan is subscribed.
+Topics below will be subscribed only if /scan is subscribed.
 
 * /camera/depth/compressed
 * /camera/camera_info
