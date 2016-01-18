@@ -71,7 +71,11 @@ void DepthImageToLaserScanROS::connectCb(const ros::SingleSubscriberPublisher& p
   if (!sub_ && pub_.getNumSubscribers() > 0) {
     ROS_DEBUG("Connecting to depth topic.");
     image_transport::TransportHints hints(im_transport_, ros::TransportHints(), pnh_);
-    sub_ = it_.subscribeCamera(depth_im_topic_, 10, &DepthImageToLaserScanROS::depthCb, this, hints);
+
+    // get cache size
+    int cache_size;
+    pnh_.getParam("sync_cache_size", cache_size);
+    sub_ = it_.subscribeCamera(depth_im_topic_, cache_size, &DepthImageToLaserScanROS::depthCb, this, hints);
   }
 }
 
